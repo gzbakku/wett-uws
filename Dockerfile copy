@@ -1,0 +1,40 @@
+FROM alpine:3.12
+
+RUN mkdir -p /usr/src/app
+WORKDIR /usr/src/app
+
+ENV NODE_VERSION 14.17.4
+
+RUN apk add --nocache --virtual .build-deps-full nodejs=14.17.4-r0
+
+RUN apk add --nocache --virtual .build-deps-full \
+    # nodejs \
+    # npm \
+    binutils-gold \
+    g++ \
+    gcc \
+    gnupg \
+    libgcc \
+    linux-headers \
+    make \
+    python3 \
+    git
+
+# CMD ["node -v"]
+
+COPY package.json /usr/src/app/
+COPY . /usr/src/app
+
+RUN npm install
+# RUN npm install uNetworking/uWebSockets.js#v19.3.0
+
+EXPOSE 5566
+
+# CMD ["node -v"]
+
+CMD ["ls"]
+# CMD ["cd ~/usr/src/app/node_modules"]
+
+# CMD []
+
+CMD [ "node", "index.js" ]

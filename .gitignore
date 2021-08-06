@@ -1,0 +1,9 @@
+
+# folders
+app/
+node_modules/
+secure/
+
+# files
+main.js
+test.js

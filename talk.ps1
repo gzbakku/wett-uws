@@ -1,0 +1,1 @@
+Invoke-Expression "docker run -p 5566:5566 --rm -it wstest"
