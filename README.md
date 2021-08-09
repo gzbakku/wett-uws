@@ -8,6 +8,14 @@ wett-uws is a wett api with a uws backend, this is a rest and websockets backend
 npm i wett-uws
 ```
 
+# Make your Life Easy.
+
+1. go check examples of server and db in examples directory in the repo you will get everthing you need there dont go to reading the spec or docs startight.
+2. use hozz templates with your app so you wont need to reinvent the best backend app template yourself.
+3. put your authentication credentials in .env file and use "require('dotenv').config();" to integrate creds in node js app.
+4. use the docker file provided in the repo to dockerize the app easily
+5. file server or sendFile in server service are not optimized for millions of requests use a production ready static file server for serving static content.
+
 # services
 
 wett-uws comes with all neccesary tools to start a backend services which you can learn within 10 minutes

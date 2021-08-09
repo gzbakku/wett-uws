@@ -7,3 +7,4 @@ secure/
 # files
 main.js
 test.js
+**/.env

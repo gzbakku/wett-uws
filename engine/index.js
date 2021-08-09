@@ -5,6 +5,7 @@ module.exports = {
     request:require('request-promise'),
     md5:require("md5"),
     uniqid:require("uniqid"),
+    mime:require("mime"),
 
     auth:require("./auth"),
     common:require("./common"),

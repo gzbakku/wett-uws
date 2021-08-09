@@ -1,5 +1,5 @@
-const keys = require("./examples/secure.json");
-global.engine = require("./index.js");
+const keys = require("./secure.json");
+global.engine = require("../index.js");
 require('dotenv').config();
 
 main();

@@ -1,4 +1,5 @@
 const uws = require("uWebSockets.js");
+const fs = require("fs/promises");
 
 class App{
     constructor(){
@@ -11,6 +12,7 @@ class App{
     put(route,handler){this.routes.put[route] = handler;}
     post(route,handler){this.routes.post[route] = handler;}
     delete(route,handler){this.routes.delete[route] = handler;}
+    base_dir(dir){this.dir = dir;}
 }
 
 class Request{
@@ -34,16 +36,17 @@ class Request{
 }
 
 class Response{
-    constructor(request_id,base_response,signal,channel_id){
+    constructor(request_id,base_response,signal,channel_id,cors){
         this.base_response = base_response;
         this.request_id = request_id;
         this.headers = {};
         this.status = "200 OK";
         this.signal = signal;
         this.channel_id = channel_id;
+        this.cors = cors;
     }
     set(key,value){this.headers[key] = value;return this;}
-    status(value){this.status = value;return this;}
+    set_status(value){this.status = value;return this;}
     json(value){
         if(this.channel_id){
             if(!this.request_id){return new engine.common.Error("not_found-request_id");}
@@ -58,6 +61,7 @@ class Response{
         }
         this.signal();
         this.base_response.writeStatus(this.status);
+        if(this.cors){this.base_response.writeHeader("Access-Control-Allow-Origin",this.cors);}
         this.base_response.writeHeader("Content-Type",'application/json');
         for(let key in this.headers){
             this.base_response.writeHeader(key,this.headers[key]);
@@ -72,12 +76,144 @@ class Response{
         }
         this.signal();
         this.base_response.writeStatus(this.status);
+        if(this.cors){this.base_response.writeHeader("Access-Control-Allow-Origin",this.cors);}
         for(let key in this.headers){
             this.base_response.writeHeader(key,this.headers[key]);
         }
         this.base_response.write(value);
         this.base_response.end();
         return;
+    }
+    async sendFile(location){
+
+        this.signal();
+
+        let open = await fs.open(location)
+        .then((file)=>{
+            return file;
+        })
+        .catch((_)=>{
+            return false; 
+        });
+        
+        if(!open){
+            this.base_response.writeStatus("404 Not Found");
+            this.base_response.write("not found");
+            this.base_response.end();
+            return new engine.common.Error("failed-open_file");
+        }
+
+        function send_error(e){
+            this.signal();
+            this.base_response.writeStatus("500 Internal Server Error");
+            this.base_response.write("not found");
+            this.base_response.end();
+            open.close();
+            return new engine.common.Error("failed-send_file => "+e);
+        }
+
+        let stat = await open.stat();
+        let block_size = 1000 * 1000 * 10;//bytes
+        let offset = 0;
+        let size = stat.size;
+
+        if(
+            !this.base_response.writeHeader("Content-Type",engine.mime.getType(location)) ||
+            !this.base_response.writeHeader("Content-Length",stat.size.toString())
+        ){return send_error("set_headers");}
+
+        while(size > 0){
+            let read_size = block_size;
+            if(size < block_size){read_size = size;}
+            let buffer = Buffer.alloc(read_size);
+            let read_result = await open.read(buffer,0,read_size,offset);
+            if(!this.base_response.write(new Uint8Array(buffer))){return send_error("write_data");}
+            if(size > block_size){
+                size -= block_size;
+                offset += block_size;
+            }
+            else {
+                offset += size;
+                size -= size;
+            }
+        }
+
+        this.base_response.end();
+        open.close();
+
+        return true;
+
+    }
+
+}
+
+class ResponseHandler{
+    constructor(res){
+        this.res = res;
+    }
+    writeHeader(key,value){
+        try {
+            this.res.writeHeader(key,value);
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+    writeStatus(status){
+        try {
+            this.res.writeStatus(status);
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+    write(data){
+        try {
+            this.res.write(data);
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+    end(){
+        try {
+            this.res.end();
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+    onData(handler){
+        try {
+            this.res.onData(handler);
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+    onAborted(handler){
+        try {
+            this.res.onAborted(handler);
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }
+    getRemoteAddressAsText(){
+        try {
+            let fetch = this.res.getRemoteAddressAsText();
+            return fetch;
+        } catch (_) {
+            return false;
+        }
+    }
+    getProxiedRemoteAddressAsText(){
+        try {
+            let fetch = this.res.getProxiedRemoteAddressAsText();
+            return fetch;
+        } catch (_) {
+            return false;
+        }
     }
 }
 
@@ -120,6 +256,10 @@ function send(channel_id,body){
 }
 
 async function init(config){
+
+    if(!config.file_read_chunk_size){
+        config.file_read_chunk_size = 1000 * 1000 * 10;//bytes //10 Mega-Bytes
+    }
 
     let builder;
 
@@ -252,7 +392,9 @@ async function init(config){
             // console.log(ws);
         }
         
-      }).any('/*',(res, req) => {
+      }).any('/*',async (base_res, req) => {
+
+        let res = new ResponseHandler(base_res);
 
         let url = req.getUrl();
         let method = req.getMethod();
@@ -267,19 +409,6 @@ async function init(config){
             res.writeHeader("Connection","keep-alive");
             res.end();
             return;
-        } else {
-            res.writeHeader("Access-Control-Allow-Origin",config.cors);
-        }
-
-        if(!module.exports.app.routes[method] && !module.exports.app.routes.all){
-            res.writeStatus("404 Not Found");
-            res.end();
-            return;
-        }
-        if(!module.exports.app.routes[method][url] && !module.exports.app.routes.all){
-            res.writeStatus("404 Not Found");
-            res.end();
-            return;
         }
 
         readJson(res,async (body)=>{
@@ -288,20 +417,9 @@ async function init(config){
 
             let build_response = new Response(headers["td-wet-req"],res,()=>{
                 processed = true;
-            });
+            },null,config.cors);
 
             let enc = new TextDecoder(),auth;
-            if(headers["td-wet-token"] && false){
-                let token = headers["td-wet-token"];
-                let verify = engine.auth.verify(token);
-                if(verify){
-                    let authenticate = await engine.auth.sessions.authenticate(verify.session_id);
-                    if(authenticate){
-                        auth = authenticate;
-                    }
-                }
-            }
-
             let build_request = new Request(null,null,{
                 url:url,
                 headers:headers,
@@ -315,33 +433,7 @@ async function init(config){
                 ]
             });
 
-            if(!body){
-                let run = await module.exports.app.routes.all(build_request,build_response);
-                if(!processed){
-                    res.writeStatus("500 Internal Server Error");
-                    res.end();
-                    return;
-                }
-                return;
-            }
-
-            if(!module.exports.app.routes[method]){
-                res.writeStatus("404 Not Found");
-                res.end();
-                return;
-            }
-            if(!module.exports.app.routes[method][url]){
-                res.writeStatus("404 Not Found");
-                res.end();
-                return;
-            }
-
             if(module.exports.app.routes[method][url]){
-                if(!headers['content-type']){
-                    res.writeStatus("406 Not Acceptable");
-                    res.end();
-                    return;
-                }
                 let run = await module.exports.app.routes[method][url](build_request,build_response);
                 if(!processed){
                     res.writeStatus("500 Internal Server Error");
@@ -349,12 +441,122 @@ async function init(config){
                     return;
                 }
             } else {
+
+                //------------------------------------------------
+                //check if file exists
+                //------------------------------------------------
+
+                if(module.exports.app["dir"]){
+                    let full_path = module.exports.app["dir"] + url;
+                    while(full_path.indexOf("%20") >=0){
+                        full_path = full_path.replace("%20"," ");
+                    }
+                    let open = await fs.open(full_path)
+                    .then((d)=>{return d;}).catch(()=>{return false;});
+                    if(open){
+
+                        let range;
+                        if(headers["Range"] || headers["range"] || headers["content-range"]){
+                            range = parse_range_header(
+                                headers["Range"] || headers["range"] || headers["content-range"]
+                                );
+                            if(!range){
+                                if(!res.end()){
+                                    open.close();
+                                    return false;
+                                }
+                            } else {
+                                if(!res.writeStatus("206 Partial Content")){
+                                    open.close();
+                                    return false;
+                                }
+                            }
+                        } else {
+                            if(!res.writeHeader("Accept-Ranges","bytes")){
+                                open.close();
+                                return false;
+                            }
+                        }
+                        
+                        let stat = await open.stat();
+                        let block_size = config.file_read_chunk_size;//bytes
+                        let offset = 0;
+                        let size = stat.size;
+
+                        if(range){
+
+                            if(range.end){
+                                if(
+                                    (range.end > size) ||
+                                    (range.end < range.start)
+                                ){
+                                    if(
+                                        !res.writeStatus("416 Range Not Satisfiable") || 
+                                        !res.end()
+                                    ){
+                                        open.close();
+                                        return false;
+                                    }
+                                }
+                            }
+                            let range_size;
+                            if(range.end){
+                                range_size = range.end - range.start;
+                            } else {
+                                range_size = size - range.start;
+                            }
+                            size = range_size;
+                            offset = range.start;
+                            if(!range.end){range.end = stat.size;}
+                            if(!res.writeHeader(
+                                "Content-Range",
+                                `${range.unit} ${range.start}-${range.end}/${stat.size}`
+                            )){
+                                open.close();
+                                return false;
+                            }
+                        } else {
+                            let get_mime = engine.mime.getType(full_path);
+                            if(
+                                !res.writeHeader("Content-Type",get_mime) ||
+                                !res.writeHeader("Content-Length",stat.size.toString())
+                            ){
+                                open.close();
+                                return false;
+                            }
+                        }
+
+                        while(size > 0){
+                            let read_size = block_size;
+                            if(size < block_size){read_size = size;}
+                            let buffer = Buffer.alloc(read_size);
+                            let read_result = await open.read(buffer,0,read_size,offset);
+                            if(!res.write(new Uint8Array(buffer))){
+                                open.close();
+                                return false;
+                            }
+                            if(size > block_size){
+                                size -= block_size;
+                                offset += block_size;
+                            }
+                            else {
+                                offset += size;
+                                size -= size;
+                            }
+                        }
+                        res.end();
+                        open.close();
+                        return;
+                    }
+                }//send file if exists
+
                 let run = await module.exports.app.routes.all(build_request,build_response);
                 if(!processed){
                     res.writeStatus("500 Internal Server Error");
                     res.end();
                     return;
                 }
+
             }
 
         });//readjson
@@ -364,6 +566,19 @@ async function init(config){
           console.log('Listening to port ' + config.port);
         }
       });
+}
+
+function parse_range_header(header){
+    if(typeof(header) !== "string"){return false;}
+    let re = /([\w]*)\s*=\s*([\d]*)\s*-\s*([\d]*)/;
+    let match = header.match(re);
+    if(!match){return false;}
+    if(!match[0]){return false;}
+    return {
+        unit:match[1],
+        start: !isNaN(match[2]) ? Number(match[2]) : 0,
+        end: !isNaN(match[3]) ? Number(match[3]) : null
+    };
 }
 
 function readJson(res,handler) {
@@ -404,7 +619,7 @@ function readJson(res,handler) {
     });
 
     res.onAborted(()=>{
-        console.log("request aborted");
+        // console.log("request aborted");
     });
 
   }

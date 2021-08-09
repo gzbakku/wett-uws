@@ -1,5 +1,5 @@
-const wett_firestore = require("../wett-firestore/index");
-global.engine = require("./index");
+const wett_firestore = require("../../wett-firestore");
+global.engine = require("../index");
 require('dotenv').config();
 
 main();
