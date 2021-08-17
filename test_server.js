@@ -1,3 +1,4 @@
+const engine = require("./engine");
 const keys = require("./examples/secure.json");
 global.engine = require("./index.js");
 require('dotenv').config();
@@ -55,11 +56,29 @@ async function main(){
   });
 
   //---------------------------
+  //websocket connection handlers
+  //---------------------------
+
+  //---------------------------
   //add message handler
   //---------------------------
   engine.server.app.message((channel_id,message,isBinary)=>{
-    console.log(message);
+    engine.server.send(channel_id,{reply:"akku"});
     return true;
+  });
+
+  //---------------------------
+  //add wwebsocket connection open handler
+  //---------------------------
+  engine.server.app.add_ws_open_hanlder((ws)=>{
+    console.log("connection started");
+  });
+
+  //---------------------------
+  //add wwebsocket connection close handler
+  //---------------------------
+  engine.server.app.add_ws_close_handler((ws)=>{
+    console.log("connection exited");
   });
 
   //---------------------------
@@ -72,7 +91,7 @@ async function main(){
   //---------------------------
   //login function
   //---------------------------
-  engine.server.app.post("/login",(req,res)=>{
+  engine.server.app.post("/apps/main/login",(req,res)=>{
     let make_token = engine.auth.createToken({
       channel_id:engine.md5("user"),
       uid:"some",
@@ -94,7 +113,7 @@ async function main(){
   //---------------------------
   //unprotected api 
   //---------------------------
-  engine.server.app.post("/some",async (req,res)=>{
+  engine.server.app.post("/apps/main/some",async (req,res)=>{
     res.json({
       some:true
     });
@@ -103,7 +122,7 @@ async function main(){
   //---------------------------
   //protected route 
   //---------------------------
-  engine.server.app.post("/protected",async (req,res)=>{
+  engine.server.app.post("/apps/main/some/protected",async (req,res)=>{
     let verify = await engine.auth.verifyRequest(req);
     if((verify instanceof engine.common.Error)){
       return false;

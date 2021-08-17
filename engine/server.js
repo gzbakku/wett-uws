@@ -3,7 +3,7 @@ const fs = require("fs/promises");
 
 class App{
     constructor(){
-        this.routes = {message:null,all:null,get:{},set:{},put:{},post:{},delete:{},};
+        this.routes = {message:null,all:null,get:{},set:{},put:{},post:{},delete:{},open:null,close:null};
     }
     message(handler){this.routes.message = handler;}
     all(handler){this.routes.all = handler;}
@@ -13,6 +13,8 @@ class App{
     post(route,handler){this.routes.post[route] = handler;}
     delete(route,handler){this.routes.delete[route] = handler;}
     base_dir(dir){this.dir = dir;}
+    add_ws_open_hanlder(handler){this.open = handler;}
+    add_ws_close_handler(handler){this.close = handler;}
 }
 
 class Request{
@@ -225,13 +227,12 @@ module.exports = {
     init:init
 };
 
-let timers = {};
 let connections = {};
 
 function get_connection_id() {
     while(true){
         let uid = engine.uniqid();
-        if(!timers.hasOwnProperty(uid)){return uid;}
+        if(!connections.hasOwnProperty(uid)){return uid;}
     }
 }
 
@@ -246,12 +247,13 @@ function remove_expire(params) {
 function send(channel_id,body){
     if(body instanceof Object){body = JSON.stringify(body);}
     if(!connections[channel_id]){return new engine.common.Error("not_found-channel");}
-    try{
-        connections[channel_id].send(body);
-        return true;
-    }catch(e){
-        console.log(e);
-        return false;
+    for(let connection_id in connections[channel_id]){
+        try{
+            connections[channel_id][connection_id].send(body);
+            return true;
+        }catch(e){
+            return new engine.common.Error("failed-send => " + e instanceof Object ? JSON.stringify(e) : e );
+        }
     }
 }
 
@@ -293,7 +295,11 @@ async function init(config){
             ws.authenticated = false;
             setTimeout(()=>{
                 if(ws.closed){return;}
-                if(!ws.authenticated){ws.close();}
+                if(!ws.authenticated){
+                    try{
+                        ws.close();
+                    }catch(_){return false;}
+                }
             },3000);
         },
       
@@ -321,13 +327,19 @@ async function init(config){
                 let authenticate = await engine.auth.sessions.authenticate(verify.session_id);
                 if(authenticate === false || (authenticate instanceof engine.common.Error))
                 {ws.closed = true;return ws.close();}
-                connections[verify.channel_id] = ws;
+                // connections[verify.channel_id] = ws;
+                ws.connection_id = verify.hasOwnProperty() ? verify.connection_id : engine.uniqid();
                 ws.authenticated = true;
                 ws.channel_id = verify.channel_id;
                 ws.session_id = verify.session_id;
+                if(!(connections[verify.channel_id] instanceof Object)){connections[verify.channel_id] = {};}
+                connections[verify.channel_id][ws.connection_id] = ws;
                 ws.send(JSON.stringify({
                     auth:true
                 }));
+                if(module.exports.app.open){
+                    module.exports.app.open(ws);
+                }
                 return;
             }
 
@@ -387,9 +399,13 @@ async function init(config){
 
         },
 
-        close:(ws)=>{
-            console.log("connection closed");
-            // console.log(ws);
+        close:async (ws)=>{
+            if(ws.authenticated){
+                if(module.exports.app.close){
+                    await module.exports.app.close(ws);
+                }
+            }
+            delete connections[ws.channel_id][ws.connection_id];
         }
         
       }).any('/*',async (base_res, req) => {
