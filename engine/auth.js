@@ -108,7 +108,7 @@ module.exports = {
 
         if(!(payload instanceof Object)){return new engine.common.Error("payload is not a object");}
         if(!(options instanceof Object)){options = {};}
-        if(!options.expire){options.expire = 31536000;/*365days*/}
+        if(!options.expire){options.expire = 31536000;/*365days in seconds*/}
         if(!payload.session_id){payload.session_id = engine.uniqid();}
         if(!payload.channel_id){return new engine.common.Error("no channel_id property provided");}
         payload.expire = engine.time.now() + (options.expire * 1000);

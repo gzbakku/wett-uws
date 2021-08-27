@@ -23,11 +23,11 @@ module.exports = function doThis(item){
 function getType(object){
   if(object === null || object === undefined){
     return null;
-  } else if(object instanceof Object){
-    return 'object';
   } else if(object instanceof Array){
     return 'array';
-  } else{
+  } else if(object instanceof Object){
+    return 'object';
+  }  else{
     return typeof(object)
   }
 }
