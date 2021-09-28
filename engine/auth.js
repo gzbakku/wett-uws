@@ -66,6 +66,9 @@ class Sessions{
     add(key,data){
         this.session[key] = data;
     }
+    update(key,data){
+        this.session[key] = data;
+    }
     get(session_id){
         return this.session[session_id];
     }
