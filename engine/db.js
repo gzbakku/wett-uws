@@ -65,7 +65,7 @@ function collection(name,builder){
     delete:()=>{return del(builder);},
     where:(a,b,c)=>{return where(a,b,c,builder);},
     orderBy:(i,d)=>{return orderBy(i,d,builder);},
-    limit:(q)=>{return limit(q,builder);}
+    limit:(q)=>{return limit(q,builder);},
   }
 }
 
@@ -79,7 +79,7 @@ function doc(name,builder){
     insert:(body)=>{return insert(body,builder);},
     update:(body)=>{return update(body,builder);},
     increment:(body)=>{return increment(body,builder);},
-    delete:()=>{return del(builder);}
+    delete:()=>{return del(builder);},
   }
 }
 
@@ -93,6 +93,8 @@ function where(a,b,c,builder){
     orderBy:(i,d)=>{return orderBy(i,d,builder);},
     limit:(q)=>{return limit(q,builder);},
     after:(n)=>{return after(n,builder);},
+    before:(n)=>{return before(n,builder);},
+    offset:(i,d)=>{return offset(i,d,builder);},
   }
 }
 
@@ -102,21 +104,39 @@ function orderBy(index,direction,builder){
     get:(get_raw_reference)=>{return get(builder,get_raw_reference);},
     limit:(q)=>{return limit(q,builder);},
     after:(n)=>{return after(n,builder);},
+    before:(n)=>{return before(n,builder);},
+    offset:(i,d)=>{return offset(i,d,builder);},
   }
 }
 
 function limit(query,builder){
   builder.address.push({type:'limit',query:query});
-  // console.log(builder);
   return {
     get:(get_raw_reference)=>{return get(builder,get_raw_reference);},
     after:(n)=>{return after(n,builder);},
+    before:(n)=>{return before(n,builder);},
+    orderBy:(i,d)=>{return orderBy(i,d,builder);},
+    offset:(i,d)=>{return offset(i,d,builder);},
+  }
+}
+
+function offset(query,builder){
+  builder.address.push({type:'offset',query:query});
+  return {
+    get:(get_raw_reference)=>{return get(builder,get_raw_reference);},
     orderBy:(i,d)=>{return orderBy(i,d,builder);},
   }
 }
 
 function after(name,builder){
   builder.address.push({type:'after',query:name});
+  return {
+    get:(get_raw_reference)=>{return get(builder,get_raw_reference);},
+  }
+}
+
+function before(name,builder){
+  builder.address.push({type:'before',query:name});
   return {
     get:(get_raw_reference)=>{return get(builder,get_raw_reference);},
   }
