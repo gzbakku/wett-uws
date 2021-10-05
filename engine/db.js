@@ -66,6 +66,9 @@ function collection(name,builder){
     where:(a,b,c)=>{return where(a,b,c,builder);},
     orderBy:(i,d)=>{return orderBy(i,d,builder);},
     limit:(q)=>{return limit(q,builder);},
+    after:(n)=>{return after(n,builder);},
+    before:(n)=>{return before(n,builder);},
+    orderBy:(i,d)=>{return orderBy(i,d,builder);},
     offset:(i)=>{return offset(i,builder);},
   }
 }
@@ -81,6 +84,9 @@ function doc(name,builder){
     update:(body)=>{return update(body,builder);},
     increment:(body)=>{return increment(body,builder);},
     delete:()=>{return del(builder);},
+    after:(n)=>{return after(n,builder);},
+    before:(n)=>{return before(n,builder);},
+    orderBy:(i,d)=>{return orderBy(i,d,builder);},
     offset:(i)=>{return offset(i,builder);},
   }
 }
