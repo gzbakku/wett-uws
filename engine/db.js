@@ -66,6 +66,7 @@ function collection(name,builder){
     where:(a,b,c)=>{return where(a,b,c,builder);},
     orderBy:(i,d)=>{return orderBy(i,d,builder);},
     limit:(q)=>{return limit(q,builder);},
+    offset:(i)=>{return offset(i,builder);},
   }
 }
 
@@ -80,6 +81,7 @@ function doc(name,builder){
     update:(body)=>{return update(body,builder);},
     increment:(body)=>{return increment(body,builder);},
     delete:()=>{return del(builder);},
+    offset:(i)=>{return offset(i,builder);},
   }
 }
 
@@ -94,7 +96,7 @@ function where(a,b,c,builder){
     limit:(q)=>{return limit(q,builder);},
     after:(n)=>{return after(n,builder);},
     before:(n)=>{return before(n,builder);},
-    offset:(i,d)=>{return offset(i,d,builder);},
+    offset:(i)=>{return offset(i,builder);},
   }
 }
 
@@ -105,7 +107,7 @@ function orderBy(index,direction,builder){
     limit:(q)=>{return limit(q,builder);},
     after:(n)=>{return after(n,builder);},
     before:(n)=>{return before(n,builder);},
-    offset:(i,d)=>{return offset(i,d,builder);},
+    offset:(i)=>{return offset(i,builder);},
   }
 }
 
@@ -116,7 +118,7 @@ function limit(query,builder){
     after:(n)=>{return after(n,builder);},
     before:(n)=>{return before(n,builder);},
     orderBy:(i,d)=>{return orderBy(i,d,builder);},
-    offset:(i,d)=>{return offset(i,d,builder);},
+    offset:(i)=>{return offset(i,builder);},
   }
 }
 
