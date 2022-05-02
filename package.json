@@ -1,6 +1,6 @@
 {
   "name": "wett-uws",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "wett-uws is a rest and websocket based on uwebsockets.js framework to make backend for computer applications and websites.",
   "main": "index.js",
   "scripts": {
@@ -20,10 +20,9 @@
     "htmlspecialchars": "^1.0.5",
     "md5": "^2.3.0",
     "mime": "^2.5.2",
-    "node-fetch": "^2.6.1",
+    "node-fetch": "^2.6.7",
     "request": "^2.88.2",
-    "request-promise": "^4.2.6",
-    "uWebSockets.js": "github:uNetworking/uWebSockets.js#v19.3.0",
-    "uniqid": "^5.3.0"
+    "uniqid": "^5.3.0",
+    "uWebSockets.js": "github:uNetworking/uWebSockets.js#v19.3.0"
   }
 }

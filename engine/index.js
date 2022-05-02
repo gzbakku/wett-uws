@@ -2,7 +2,8 @@
 
 module.exports = {
     
-    request:require('request-promise'),
+    // request:require('request-promise'),
+    request:require('node-fetch'),
     md5:require("md5"),
     uniqid:require("uniqid"),
     mime:require("mime"),
