@@ -70,6 +70,8 @@ function collection(name,builder){
     before:(n)=>{return before(n,builder);},
     orderBy:(i,d)=>{return orderBy(i,d,builder);},
     offset:(i)=>{return offset(i,builder);},
+    insert:(body)=>{return insert(body,builder);},
+    update:(body)=>{return update(body,builder);},
   }
 }
 
